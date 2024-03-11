@@ -38,3 +38,10 @@ To run the application, use the following command, replacing `YOUR_API_KEY_HERE`
 
 ```shell
 java -DapiKey=YOUR_API_KEY_HERE -jar target/weatherbit-0.0.1-SNAPSHOT.jar
+```
+## Heroku
+Applicaiton is deployed in heroku:
+
+https://job-interview-task-weatherbit-0738528c493e.herokuapp.com/weather?date=2024-03-19
+
+
