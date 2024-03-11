@@ -1,8 +1,6 @@
 # job-interview-task-Weatherbit-Forecast
 
-# Worldwide Windsurfer's Weather Service
-
-The Worldwide Windsurfer's Weather Service is a Java-based application designed to provide windsurfing enthusiasts with the best location for windsurfing based on weather conditions. This application utilizes the Weatherbit Forecast API, analyzing weather data to recommend the optimal location from a predefined list.
+## Task Details:
 
 ## Requirements
 
