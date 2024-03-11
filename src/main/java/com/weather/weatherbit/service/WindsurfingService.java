@@ -1,6 +1,7 @@
 package com.weather.weatherbit.service;
 
 import com.weather.weatherbit.config.Locations;
+import com.weather.weatherbit.exceptions.NoDataFoundException;
 import com.weather.weatherbit.model.WeatherApiResponse;
 import com.weather.weatherbit.model.WeatherData;
 import com.weather.weatherbit.model.WindsurfingConditions;
@@ -12,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -66,7 +68,15 @@ public class WindsurfingService {
                 .queryParam("city", location)
                 .build())
             .retrieve()
-            .bodyToMono(WeatherApiResponse.class);
+            .bodyToMono(WeatherApiResponse.class)
+            .onErrorMap(e -> {
+                if (e instanceof WebClientResponseException ex) {
+                    if (ex.getStatusCode().is4xxClientError() || ex.getStatusCode().is5xxServerError()) {
+                        return new NoDataFoundException("Error response from server for location: " + location + "; Status: " + ex.getStatusCode());
+                    }
+                }
+                return e;
+            });
     }
 
     private WindsurfingConditions findBestLocation(List<WeatherApiResponse> weatherApiResponses, String date) {
