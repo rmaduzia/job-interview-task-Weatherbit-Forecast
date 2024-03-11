@@ -2,6 +2,9 @@
 
 ## Task Details:
 
+![Screenshot](job-interview-task-Weatherbit-Forecast-Task-Details.png)
+
+
 ## Requirements
 
 - Java 17
