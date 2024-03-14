@@ -6,6 +6,7 @@ import com.weather.weatherbit.config.Locations;
 import com.weather.weatherbit.model.WeatherApiResponse;
 import com.weather.weatherbit.model.WeatherData;
 import com.weather.weatherbit.model.WindsurfingConditions;
+import com.weather.weatherbit.service.WindApiCaller;
 import com.weather.weatherbit.service.WindsurfingService;
 import java.util.ArrayList;
 import java.util.List;
@@ -32,6 +33,7 @@ class WindsurfingServiceTest {
     private WebClient.Builder webClientBuilder;
 
     private WindsurfingService windsurfingService;
+    private WindApiCaller windApiCaller;
     private Locations locations;
 
 
@@ -49,7 +51,8 @@ class WindsurfingServiceTest {
         String baseUrl = String.format("http://localhost:%s", mockWebServer.getPort());
 
         WebClient webClient = webClientBuilder.baseUrl(baseUrl).build();
-        windsurfingService = new WindsurfingService(webClient, locations);
+        windApiCaller = new WindApiCaller(webClient);
+        windsurfingService = new WindsurfingService(windApiCaller, locations);
     }
 
     @AfterEach

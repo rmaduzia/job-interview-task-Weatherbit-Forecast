@@ -1,55 +1,47 @@
 package com.weather.weatherbit.service;
 
 import com.weather.weatherbit.config.Locations;
-import com.weather.weatherbit.exceptions.NoDataFoundException;
 import com.weather.weatherbit.model.WeatherApiResponse;
 import com.weather.weatherbit.model.WeatherData;
 import com.weather.weatherbit.model.WindsurfingConditions;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.web.reactive.function.client.WebClient;
-import org.springframework.web.reactive.function.client.WebClientResponseException;
+import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 
 @RequiredArgsConstructor
 @Service
 public class WindsurfingService {
 
-    @Value("${weatherbit.api.key}")
-    private String apiKey;
-
-
-    private final WebClient webClient;
-
-    public WebClient getWebClient() {
-        return webClient;
-    }
-
+    private final WindApiCaller windApiCaller;
     private final Locations locations;
+
+    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
     public WindsurfingConditions getBestWindsurfingLocation(String lookingDate) {
 
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-        LocalDate date = LocalDate.parse(lookingDate, formatter);
+        LocalDate date;
 
-        List<WeatherApiResponse> allResponses = Flux.fromIterable(locations.getLocationsString())
-            .flatMap(this::getWeatherApiResponse)
+        try {
+            date = LocalDate.parse(lookingDate, FORMATTER);
+        } catch (DateTimeParseException exception) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Date is not correct");
+        }
+
+        return Flux.fromIterable(locations.getLocationsString())
+            .flatMap(windApiCaller::getWeatherApiResponse)
             .map(weatherApiResponse -> filterWeatherData(weatherApiResponse, date))
             .filter(weatherApiResponse -> !weatherApiResponse.getData().isEmpty())
             .collectList()
+            .filter(list -> !list.isEmpty())
+            .map(allResponses -> findBestLocation(allResponses, lookingDate))
             .block();
-
-        if (allResponses == null || allResponses.isEmpty()) {
-            return null;
-        }
-
-        return findBestLocation(allResponses, lookingDate);
     }
 
     private WeatherApiResponse filterWeatherData(WeatherApiResponse weatherApiResponse, LocalDate date) {
@@ -59,24 +51,6 @@ public class WindsurfingService {
 
         weatherApiResponse.setData(filteredData);
         return weatherApiResponse;
-    }
-
-    private Mono<WeatherApiResponse> getWeatherApiResponse(String location) {
-        return webClient.get()
-            .uri(uriBuilder -> uriBuilder
-                .queryParam("key", apiKey)
-                .queryParam("city", location)
-                .build())
-            .retrieve()
-            .bodyToMono(WeatherApiResponse.class)
-            .onErrorMap(e -> {
-                if (e instanceof WebClientResponseException ex) {
-                    if (ex.getStatusCode().is4xxClientError() || ex.getStatusCode().is5xxServerError()) {
-                        return new NoDataFoundException("Error response from server for location: " + location + "; Status: " + ex.getStatusCode());
-                    }
-                }
-                return e;
-            });
     }
 
     private WindsurfingConditions findBestLocation(List<WeatherApiResponse> weatherApiResponses, String date) {
