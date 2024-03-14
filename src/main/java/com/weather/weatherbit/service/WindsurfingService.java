@@ -7,7 +7,9 @@ import com.weather.weatherbit.model.WindsurfingConditions;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -54,35 +56,20 @@ public class WindsurfingService {
     }
 
     private WindsurfingConditions findBestLocation(List<WeatherApiResponse> weatherApiResponses, String date) {
-        WindsurfingConditions bestConditions = null;
-        double bestScore = Double.MIN_VALUE;
-        String location;
+        Optional<WindsurfingConditions> bestConditions = weatherApiResponses.stream()
+            .flatMap(response -> response.getData().stream()
+                .filter(data -> isSuitableForWindsurfing(data.getWind_spd(), data.getTemp()))
+                .map(data -> new WindsurfingConditions(response.getCity_name(), data.getTemp(), data.getWind_spd())))
+            .max(Comparator.comparingDouble(this::calculateScore));
 
-        for (WeatherApiResponse weatherApiResponse : weatherApiResponses)
-        {
-            location = weatherApiResponse.getCity_name();
-            for (WeatherData weatherData : weatherApiResponse.getData()) {
-                double windSpeed = weatherData.getWind_spd();
-                double temperature = weatherData.getTemp();
-
-                if (isSuitableForWindsurfing(windSpeed, temperature)) {
-                    double score = windSpeed * 3 + temperature;
-
-                    if (score > bestScore) {
-                        bestScore = score;
-                        bestConditions = new WindsurfingConditions(location, temperature,
-                            windSpeed);
-                    }
-                }
-            }
-        }
-
-        if (bestConditions == null) {
-            throw new IllegalArgumentException("No suitable conditions found for windsurfing on the specified date: " + date);
-        }
-
-        return bestConditions;
+        return bestConditions.orElseThrow(() ->
+            new ResponseStatusException(HttpStatus.NOT_FOUND, "No suitable conditions found for windsurfing on the specified date: " + date));
     }
+
+    private double calculateScore(WindsurfingConditions conditions) {
+        return conditions.getWindSpeed() * 3 + conditions.getAverageTemperature();
+    }
+
 
     private boolean isSuitableForWindsurfing(double windSpeed, double temperature) {
         return windSpeed >= 5 && windSpeed <= 18
